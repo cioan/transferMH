@@ -1,0 +1,26 @@
+{
+  "name": "transferMH",
+  "app_id": "be9e7f25",
+  "type": "ionic-angular",
+  "integrations": {
+    "cordova": {}
+  },
+  "proxies": [
+    {
+      "path":"/session",
+      "proxyUrl":"https://ami.pih-emr.org/openmrs/ws/rest/v1/session"
+    },
+    {
+      "path":"/patient",
+      "proxyUrl":"https://ami.pih-emr.org/openmrs/ws/rest/v1/patient"
+    },
+    {
+      "path":"/visit",
+      "proxyUrl":"https://ami.pih-emr.org/openmrs/ws/rest/v1/visit"
+    },
+    {
+      "path":"/encounter",
+      "proxyUrl":"https://ami.pih-emr.org/openmrs/ws/rest/v1/encounter"
+    }
+  ]
+}
