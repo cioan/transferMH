@@ -9,6 +9,9 @@ import { Patient } from "../../app/patient";
   See https://angular.io/guide/dependency-injection for more info on providers
   and Angular DI.
 */
+
+let VISIT_CUSTOM_REP = 'v=custom:(uuid,id,display,patient:(uuid,id),location:(uuid,id,name,display),startDatetime,stopDatetime,encounters:(uuid,id,display,encounterDatetime,encounterType:(uuid,display,name)))';
+
 @Injectable()
 export class OmrsRestProvider {
 
@@ -48,7 +51,7 @@ export class OmrsRestProvider {
         { observe: 'response'}).subscribe(data => {
 
         //console.log("data.status = " + data.hasOwnProperty('status'));
-        console.log("data.status = " + data.status);
+        console.log("getPatient data.status = " + data.status);
 
         resolve(data.body);
       }, (error: any) => {
@@ -67,7 +70,7 @@ export class OmrsRestProvider {
         } else {
           this.http.post(window.location.origin + "/patient", patient, {observe: 'response'})
             .subscribe(response => {
-              console.log(response);
+              console.log("patient created = " + response);
               resolve(response);
             }, (error: any) => {
               console.log("Error creating patient. error.status=" + error.status);
@@ -90,6 +93,23 @@ export class OmrsRestProvider {
       promises.push(promise);
     }
     return Promise.all(promises)
+  }
+
+  getPatientVisits(patientUuid: String) {
+    return new Promise( (resolve, reject) => {
+
+      this.http.get(window.location.origin + "/visit?patient=" + patientUuid + "&" + VISIT_CUSTOM_REP,
+        { observe: 'response'}).subscribe(data => {
+
+        console.log("getPatientVisits data.status = " + data.status);
+
+        resolve(data.body);
+      }, (error: any) => {
+        console.log("Error retrieving patient. Error.status=" + error.status);
+        reject(error.status);
+      });
+
+    });
   }
 
   importVisits(visits: any) {

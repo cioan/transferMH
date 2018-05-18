@@ -114,14 +114,15 @@ export class TransferPage {
         response as PatientRecord[];
 
         console.log("response.length = " + response.length);
-        for (const record of response) {
-          console.log("record = " + record);
+        for (let i = 0; i < response.length; i++) {
+
+          let patientRecord = { ...response[i]};
           let patientUrl: string;
-          this.omrsRest.getPatient(record).then(result => {
-            console.log("result = " + result);
+          this.omrsRest.getPatient(patientRecord).then(result => {
+            console.log("getPatient result = " + result);
             let patient: any;
             patient = result;
-            if (patient.uuid && patient.uuid === record.patient.uuid) {
+            if (patient.uuid && patient.uuid === patientRecord.patient.uuid) {
               // patient already exists
               console.log("patient already exists, uuid = " + patient.uuid);
               patientUrl = patient.uuid;
@@ -138,14 +139,16 @@ export class TransferPage {
             console.log("patientUrl = " + patientUrl);
 
             // create new patient record
-            this.omrsRest.createPatient(record.patient, patientUrl).then( result => {
+            this.omrsRest.createPatient(patientRecord.patient, patientUrl).then( result => {
               let newPatient : any;
               newPatient = result;
-              console.log("results.status = " + newPatient.status);
-              this.omrsRest.importVisits(record.visits).then( result => {
+              console.log("newPatient.status = " + newPatient.status);
+             
+
+              this.omrsRest.importVisits(patientRecord.visits).then( result => {
                 console.log("imported visits: " + result);
                 // update encounters with the new visit uuid
-                let encounters = this.updateRecordEncounters(record, result);
+                let encounters = this.updateRecordEncounters(patientRecord, result);
                 console.log("encounters : " + encounters);
                 let newEncounters = this.cleanEncountersUuid(encounters);
                 console.log("newEncounters = " + newEncounters);

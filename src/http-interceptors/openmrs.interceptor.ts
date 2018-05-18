@@ -12,9 +12,10 @@ export class OpenMrsHttpInterceptor implements HttpInterceptor {
     console.log("OpenMrs interceptor");
 
     const authToken = localStorage.getItem('authToken');
+    const base64 = btoa("admin" + ':' + "Admin123");
 
     const authReq = req.clone( {
-      headers: req.headers.set('Authorization', 'Basic ' + authToken)
+      headers: req.headers.set('Authorization', 'Basic ' + base64)
     });
 
 
