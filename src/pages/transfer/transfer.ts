@@ -141,7 +141,7 @@ export class TransferPage {
 
   importJson() {
     this.http
-      .get<PatientRecord[]>('assets/10_11_patient.json')
+      .get<PatientRecord[]>('assets/7_and_8_patient.json')
       .subscribe((response) => {
         response as PatientRecord[];
 

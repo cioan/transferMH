@@ -117,7 +117,7 @@ export class OmrsRestProvider {
         this.http.post( window.location.origin + "/encounter", encounter).subscribe ( response => {
           resolve(response);
         }, (error: any) => {
-          console.log("failed to create encounter with  dateTime: " + encounter.encounterDatetime);
+          console.log("failed to create encounter with patient.uuid=: " + encounter.patient.uuid + "; encounterDatetime= " + encounter.encounterDatetime);
           // those are probably the registration encounters
           resolve(encounter);
         });
