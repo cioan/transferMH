@@ -41,6 +41,22 @@ export class TransferPage {
     });
   }
 
+  updatePatientVisits(jsonVisits: any, serverVisits: any) {
+    for (let i = 0; i < jsonVisits.length; i++) {
+      let jsonVisit = jsonVisits[i];
+      for (let j = 0; j < serverVisits.length; j++) {
+        let serverVisit = serverVisits[j];
+        if (jsonVisit.startDatetime == serverVisit.startDatetime
+          && jsonVisit.stopDatetime == serverVisit.stopDatetime) {
+          // its the same visit
+          jsonVisit.uuid = serverVisit.uuid;
+          break;
+        }
+      }
+    }
+
+    return jsonVisits;
+  }
 
   updateRecordEncounters(patientRecord: any, visits: any) {
 
@@ -80,14 +96,26 @@ export class TransferPage {
   }
 
   cleanEncountersUuid(encounters: any) {
-    for (let i = 0; i < encounters.length; i++) {
-      let encounter = encounters[i];
-      if (encounter.uuid) {
-        delete encounter.uuid;
-        //encounters[i] = encounter;
-      }
-    }
-    return encounters;
+    return new Promise( (resolve, reject) => {
+      this.omrsRest.checkEncounters(encounters).then(results => {
+        //import only results with Status = 404 (Not found)
+        console.log("cleanEncountersUuid results.length=" + results.length);
+        let restEncounters: any = results;
+        let returnEncounters: any = [];
+        for (let i = 0; i < restEncounters.length; i++) {
+          let tmpEncounter = restEncounters[i];
+          if (tmpEncounter.status == "404") {
+            let encounter: any = tmpEncounter.srcEncounter;
+            delete encounter.uuid;
+            returnEncounters.push(encounter);
+          }
+        }
+        resolve(returnEncounters);
+      }, (error: any) => {
+        console.log("error verifying encounters: " + JSON.stringify(error));
+        reject(error);
+      });
+    });
   }
 
   importEncountersJson() {
@@ -95,21 +123,25 @@ export class TransferPage {
 
       let updatedEncounters = this.updateRecordEncounters(response, response.newVisits);
       console.log("updatedEncounters = " + updatedEncounters);
-      let newEncounters = this.cleanEncountersUuid(updatedEncounters);
-      console.log("newEncounters = " + newEncounters);
-
-      this.omrsRest.importEncounters(newEncounters).then( result => {
-        console.log("imported encounters: " + result);
-
+      this.cleanEncountersUuid(updatedEncounters).then( results => {
+        console.log("results = " + results);
       }, (error: any) => {
-        console.log("error importing encounters: " + error);
+        console.log("importEncountersJson error = " + error);
       });
+
+
+      // this.omrsRest.importEncounters(newEncounters).then( result => {
+      //   console.log("imported encounters: " + result);
+      //
+      // }, (error: any) => {
+      //   console.log("error importing encounters: " + error);
+      // });
     });
   }
 
   importJson() {
     this.http
-      .get<PatientRecord[]>('assets/4_patient.json')
+      .get<PatientRecord[]>('assets/10_11_patient.json')
       .subscribe((response) => {
         response as PatientRecord[];
 
@@ -143,30 +175,43 @@ export class TransferPage {
               let newPatient : any;
               newPatient = result;
               console.log("newPatient.status = " + newPatient.status);
-             
+              this.omrsRest.getPatientVisits(patientRecord.patient.uuid).then( data => {
+                let body: any = data;
+                console.log("existing patient visits = " + body.results);
+                let updatedVisits = this.updatePatientVisits(patientRecord.visits, body.results);
 
-              this.omrsRest.importVisits(patientRecord.visits).then( result => {
-                console.log("imported visits: " + result);
-                // update encounters with the new visit uuid
-                let encounters = this.updateRecordEncounters(patientRecord, result);
-                console.log("encounters : " + encounters);
-                let newEncounters = this.cleanEncountersUuid(encounters);
-                console.log("newEncounters = " + newEncounters);
+                this.omrsRest.importVisits(updatedVisits).then( result => {
+                  console.log("imported visits: " + result);
+                  // update encounters with the new visit uuid
+                  let encounters = this.updateRecordEncounters(patientRecord, result);
+                  console.log("encounters : " + encounters);
 
-                this.omrsRest.importEncounters(newEncounters).then( result => {
-                  console.log("imported encounters: " + result);
+                  this.cleanEncountersUuid(encounters).then( results => {
+                    console.log("results = " + results);
+                    let newEncounters: any = results;
+                    if (newEncounters && newEncounters.length > 0) {
+                      this.omrsRest.importEncounters(newEncounters).then( result => {
+                        console.log("imported encounters.length: " + result.length);
+
+                      }, (error: any) => {
+                        console.log("error importing encounters: " + error);
+                      });
+
+                    }
+                  }, (error: any) => {
+                    console.log("failed to clean encounters request object = " + error);
+                  });
+
 
                 }, (error: any) => {
-                  console.log("error importing encounters: " + error);
+                  console.log("error importing visits: " + JSON.stringify(error));
                 });
 
               }, (error: any) => {
-                console.log("error importing visits: " + error);
+                console.log("error retrieving patient's visits: " + JSON.stringify(error));
               });
-
-
             }, (error: any) => {
-              console.log("failed to create new patient, error = " + error);
+              console.log("failed to create new patient, error = " + JSON.stringify(error));
             })
 
           });

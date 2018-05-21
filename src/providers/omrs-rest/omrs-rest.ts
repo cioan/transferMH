@@ -74,9 +74,39 @@ export class OmrsRestProvider {
               resolve(response);
             }, (error: any) => {
               console.log("Error creating patient. error.status=" + error.status);
+              reject(error);
             });
           }
     });
+  }
+
+  checkEncounters(encounters: any) {
+    let promises = [];
+    for (let i=0; i < encounters.length; i++) {
+      let encounter: any = encounters[i];
+      let promise = new Promise( (resolve, reject) => {
+        let encounterResponse = {
+          srcEncounter: encounter,
+          status: null
+        };
+        this.http.get( window.location.origin + "/encounter/" + encounter.uuid,
+          { observe: 'response'}).subscribe ( response => {
+          encounterResponse.status = response.status;
+          resolve(encounterResponse);
+        }, (error: any) => {
+          console.log("error finding encounter uuid: " + encounter.uuid);
+          if (error.status) {
+            encounterResponse.status = error.status;
+            resolve(encounterResponse);
+          }
+        }, () => {
+            //we are done with this http request
+          console.log("complete http get:  " + JSON.stringify(encounterResponse));
+        });
+      });
+      promises.push(promise);
+    }
+    return Promise.all(promises)
   }
 
   importEncounters(encounters: any) {
@@ -87,7 +117,9 @@ export class OmrsRestProvider {
         this.http.post( window.location.origin + "/encounter", encounter).subscribe ( response => {
           resolve(response);
         }, (error: any) => {
-          console.log("error creating encounter: " + error);
+          console.log("failed to create encounter with  dateTime: " + encounter.encounterDatetime);
+          // those are probably the registration encounters
+          resolve(encounter);
         });
       });
       promises.push(promise);
@@ -120,11 +152,17 @@ export class OmrsRestProvider {
       delete newVisit.encounters;
       console.log("newVisit = " + newVisit);
       let promise = new Promise( (resolve, reject) => {
-        this.http.post( window.location.origin + "/visit", newVisit).subscribe ( response => {
-          resolve(response);
-        }, (error: any) => {
-          console.log("error creating visit: " + error);
-        });
+        if (newVisit.uuid) {
+          // only create visits that do not exist yet
+          resolve(newVisit);
+        } else {
+          this.http.post( window.location.origin + "/visit", newVisit).subscribe ( response => {
+            resolve(response);
+          }, (error: any) => {
+            console.log("error creating visit: " + error);
+            reject(error);
+          });
+        }
       });
       promises.push(promise);
     }
