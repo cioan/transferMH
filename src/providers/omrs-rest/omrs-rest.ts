@@ -10,6 +10,7 @@ import { Patient } from "../../app/patient";
   and Angular DI.
 */
 
+let PATIENT_CUSTOM_REP = 'v=custom:(uuid,id,display,identifiers:(uuid,identifier,identifierType:(uuid),preferred),person:(uuid,display,gender,age,birthdate,birthdateEstimated,dead,deathDate,causeOfDeath,names,addresses,attributes))';
 let VISIT_CUSTOM_REP = 'v=custom:(uuid,id,display,patient:(uuid,id),location:(uuid,id,name,display),startDatetime,stopDatetime,encounters:(uuid,id,display,encounterDatetime,encounterType:(uuid,display,name)))';
 
 @Injectable()
@@ -19,6 +20,19 @@ export class OmrsRestProvider {
 
   constructor(public http: HttpClient) {
     console.log('Hello OmrsRestProvider Provider');
+  }
+
+  getPrefferedPatientIdentifier(patient :Patient) {
+    if (patient && patient.identifiers) {
+      for(let i = 0; i < patient.identifiers.length; i++) {
+        let identifier = patient.identifiers[i];
+        if (identifier.identifierType.uuid == 'a541af1e-105c-40bf-b345-ba1fd6a59b85' && identifier.preferred == true) {
+          //ZL EMR ID
+          return identifier.identifier;
+        }
+      }
+    }
+    return null;
   }
 
   login(credentials: any) {
@@ -47,7 +61,14 @@ export class OmrsRestProvider {
 
     return new Promise( (resolve, reject) => {
 
-      this.http.get(window.location.origin + "/patient/" + record.patient.uuid,
+      let url ="/patient/" + record.patient.uuid;
+      let patientIdentifier = this.getPrefferedPatientIdentifier(record.patient);
+      if (patientIdentifier) {
+        url = "/patient?identifier=" + patientIdentifier;
+      }
+
+
+      this.http.get(window.location.origin + url,
         { observe: 'response'}).subscribe(data => {
 
         //console.log("data.status = " + data.hasOwnProperty('status'));
@@ -64,11 +85,15 @@ export class OmrsRestProvider {
 
 
   createPatient(patient: Patient, patientUrl) {
+
     return new Promise( (resolve, reject) => {
         if (patientUrl) {
           resolve(patient);
         } else {
-          this.http.post(window.location.origin + "/patient", patient, {observe: 'response'})
+          let tmpPatient = patient;
+          delete tmpPatient.id;
+          console.log("tmpPatient = " + tmpPatient);
+          this.http.post(window.location.origin + "/patient", tmpPatient, {observe: 'response'})
             .subscribe(response => {
               console.log("patient created = " + response);
               resolve(response);

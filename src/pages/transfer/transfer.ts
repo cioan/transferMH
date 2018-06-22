@@ -119,7 +119,7 @@ export class TransferPage {
   }
 
   importEncountersJson() {
-    this.http.get<any>('assets/2_visits_encounters.json').subscribe( (response) => {
+    this.http.get<any>('assets/2018_6_22_12_37_all_patients.json').subscribe( (response) => {
 
       let updatedEncounters = this.updateRecordEncounters(response, response.newVisits);
       console.log("updatedEncounters = " + updatedEncounters);
@@ -141,7 +141,7 @@ export class TransferPage {
 
   importJson() {
     this.http
-      .get<PatientRecord[]>('assets/7_and_8_patient.json')
+      .get<PatientRecord[]>('assets/2018_6_22_12_37_all_patients.json')
       .subscribe((response) => {
         response as PatientRecord[];
 
@@ -151,10 +151,15 @@ export class TransferPage {
           let patientRecord = { ...response[i]};
           let patientUrl: string;
           this.omrsRest.getPatient(patientRecord).then(result => {
-            console.log("getPatient result = " + result);
+            console.log("getPatient results = " + result);
             let patient: any;
-            patient = result;
-            if (patient.uuid && patient.uuid === patientRecord.patient.uuid) {
+            let restBody: any;
+            restBody= result;
+            if (restBody.results && restBody.results.length > 0) {
+              patient = restBody.results[0];
+            }
+
+            if (patient) {
               // patient already exists
               console.log("patient already exists, uuid = " + patient.uuid);
               patientUrl = patient.uuid;
@@ -175,16 +180,17 @@ export class TransferPage {
               let newPatient : any;
               newPatient = result;
               console.log("newPatient.status = " + newPatient.status);
-              this.omrsRest.getPatientVisits(patientRecord.patient.uuid).then( data => {
+
+              this.omrsRest.getPatientVisits(patientUrl ? patientUrl : patientRecord.patient.uuid).then( data => {
                 let body: any = data;
                 console.log("existing patient visits = " + body.results);
                 let updatedVisits = this.updatePatientVisits(patientRecord.visits, body.results);
 
                 this.omrsRest.importVisits(updatedVisits).then( result => {
-                  console.log("imported visits: " + result);
+                  console.log("imported visits.length: " + result.length);
                   // update encounters with the new visit uuid
                   let encounters = this.updateRecordEncounters(patientRecord, result);
-                  console.log("encounters : " + encounters);
+                  console.log("encounters.length : " + encounters.length);
 
                   this.cleanEncountersUuid(encounters).then( results => {
                     console.log("results = " + results);
